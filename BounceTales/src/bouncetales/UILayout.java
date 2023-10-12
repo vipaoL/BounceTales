@@ -509,7 +509,7 @@ public final class UILayout {
 			} else if (selElem != null) {
 				GameRuntime.mBounceGame.changeScene(selElem.action);
 			}
-		}
+                }
 	}
 
 	/* renamed from: d */
