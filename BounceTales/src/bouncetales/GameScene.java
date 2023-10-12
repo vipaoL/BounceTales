@@ -29,4 +29,7 @@ public class GameScene {
 	public static final int CALL_TITLE_MENU = 36;
 	public static final int RESTART_LEVEL = 37;
 	public static final int OPEN_MORE_GAMES_URL = 38;
+        public static final int MENU_SETTINGS = 40;
+        public static final int SETTINGS_TOGGLE = 41;
+        public static final int SETTINGS_SHOW_INFO = 42;
 }

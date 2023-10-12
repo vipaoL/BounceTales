@@ -219,6 +219,7 @@ public final class BounceGame {
 	//State - layout core
 	private final UILayout ui = new UILayout(); //renamed from: b
 	private UILayout drawUI = null; //renamed from: a
+        private static SettingsUI settingsUI = null;
 
 	//State - loading
 	private int curSplashId; //renamed from: C
@@ -233,6 +234,7 @@ public final class BounceGame {
 	private static int selectedLevelId = 0; //renamed from: k
 
 	private static int lastSelectedLevelId = 0; //renamed from: l
+        private static int lastSelectedSettingId = 0;
 
 	private static int bookAnimationTime = 0; //renamed from: m
 	private static int targetBookAnimationTime = 0; //renamed from: n
@@ -414,6 +416,29 @@ public final class BounceGame {
 		GameRuntime.drawImageResAnchored(xOffset - drawnWidth, y, NUMBER_FONT_IMAGE_IDS[0], Graphics.TOP | Graphics.RIGHT); //leading zero
 		return GameRuntime.getImageMapParam(NUMBER_FONT_IMAGE_IDS[0], ImageMap.PARAM_WIDTH) + drawnWidth;
 	}
+
+        private static void drawSelectedSettingPageUI(int x, int y, int settingID, int bottomY, int i5) {
+                SettingsUI.SettingsElement settingElement = settingsUI.getElementAt(settingID);
+
+                GameRuntime.setTextStyle(-2, 3);
+                GameRuntime.setTextColor(0, 0xFF7800);
+                GameRuntime.setTextColor(1, 0);
+                String title = settingElement.getTitle();
+                GameRuntime.drawText(title, 0, title.length(), x, bottomY, Graphics.BOTTOM | Graphics.HCENTER);
+
+                String isEnabled;
+                if (settingElement.getIsEnabled()) {
+                    isEnabled = "Enabled";
+                    GameRuntime.drawImageRes(x, i5+42*4/3, 344);
+                } else {
+                    isEnabled = "Disabled";
+                    GameRuntime.drawImageRes(x, i5+42*4/3, 343);
+                }
+
+                settingElement.drawDescription(x, 2*y / 3);
+
+                GameRuntime.drawText(isEnabled, 0, isEnabled.length(), x, i5, Graphics.VCENTER | Graphics.HCENTER);
+        }
 
 	/* renamed from: a */
 	private static void drawLevelSelectUI(int x, int y, int levelId, int bottomY, int i5) {
@@ -665,15 +690,16 @@ public final class BounceGame {
 		}
 	}
 
+        private static void updateSettingToggleSoftkey(UILayout ui) {
+		ui.changeSoftkey(GameRuntime.SOFTKEY_CENTER, settingsUI.getMiddleBtnTitle(), 0);
+	}
+
 	private static void cycleLevelSelectLeft(UILayout layout, boolean updateSoftkeys) {
 		if (selectedLevelId != 0) {
                         boolean fast = lastSelectedLevelId > selectedLevelId;
                         lastSelectedLevelId = selectedLevelId;
                         selectedLevelId--;
-			if (bookAnimationTime == 650 || fast) {
-				bookAnimationTime = 0;
-			}
-			targetBookAnimationTime = 650;
+                        animateBookLeft(fast);
                         if (updateSoftkeys) {
                                 updateLevelStartSoftkeyByUnlock(layout);
                         }
@@ -686,15 +712,44 @@ public final class BounceGame {
                         boolean fast = lastSelectedLevelId < selectedLevelId;
                         lastSelectedLevelId = selectedLevelId;
                         selectedLevelId++;
-			if (bookAnimationTime == 0 || fast) {
-				bookAnimationTime = 650;
-			}
-			targetBookAnimationTime = 0;
+                        animateBookRight(fast);
                         if (updateSoftkeys) {
                                 updateLevelStartSoftkeyByUnlock(layout);
                         }
 		}
 	}
+
+        private static void cycleSettingSelectLeft(UILayout layout) {
+                boolean fast = lastSelectedSettingId > settingsUI.getCurrentSelectedItemIndex();
+                lastSelectedSettingId = settingsUI.getCurrentSelectedItemIndex();
+                if (settingsUI.prevPage()) {
+                        animateBookLeft(fast);
+                        updateSettingToggleSoftkey(layout);
+                }
+        }
+
+        private static void cycleSettingSelectRight(UILayout layout) {
+                boolean fast = lastSelectedSettingId < settingsUI.getCurrentSelectedItemIndex();
+                lastSelectedSettingId = settingsUI.getCurrentSelectedItemIndex();
+                if (settingsUI.nextPage()) {
+                        animateBookRight(fast);
+                        updateSettingToggleSoftkey(layout);
+                }
+        }
+
+        private static void animateBookLeft(boolean fast) {
+                if (bookAnimationTime == 650 || fast) {
+                        bookAnimationTime = 0;
+                }
+                targetBookAnimationTime = 650;
+        }
+
+        private static void animateBookRight(boolean fast) {
+                if (bookAnimationTime == 0 || fast) {
+                        bookAnimationTime = 650;
+                }
+                targetBookAnimationTime = 0;
+        }
 
 	/* renamed from: a */
 	private static void clearUIBackground(Graphics graphics) {
@@ -869,6 +924,80 @@ public final class BounceGame {
 				drawTranslucentSoftkeyBar(grp);
 			}
 			return false;
+		} else if (ui.uiID == GameScene.MENU_SETTINGS) {
+                        if (type == 1) {
+                                clearUIBackground(grp);
+                                int screenCX = GameRuntime.currentWidth >> 1;
+                                int screenCY = GameRuntime.currentHeight >> 1;
+                                int b = ((short) GameRuntime.getCompoundSpriteParamEx(331, 2)) + screenCY;
+                                int b2 = ((short) GameRuntime.getCompoundSpriteParamEx(331, 3)) + screenCY;
+
+                                GameRuntime.setTextStyle(-3, 3);
+                                int sanityHeight = 10 + (GameRuntime.getFontHeight(GameRuntime.getCurrentFont()) * 3);
+                                if (sanityHeight > b) {
+                                        b = sanityHeight + 2;
+                                }
+
+                                drawBookFrame(screenCX, screenCY, grp);
+                                if (settingsUI.getCurrentSelectedItemIndex() > 0) {
+                                        GameRuntime.drawImageResAnchored(3, screenCY, 326, 6); //left arrow
+                                }
+                                if (settingsUI.getCurrentSelectedItemIndex() < settingsUI.getItemsCount() - 1) {
+                                        GameRuntime.drawImageResAnchored(GameRuntime.currentWidth - 3, screenCY, 2, 10); //right arrow
+                                }
+                                int leftPageSetting = 0;
+                                int rightPageSetting = 0;
+
+                                // prev page - animation goes to the right
+                                if (bookAnimationTime < targetBookAnimationTime) {
+                                        bookAnimationTime += delta;
+                                        if (bookAnimationTime > targetBookAnimationTime) {
+                                                bookAnimationTime = targetBookAnimationTime;
+                                        }
+                                        leftPageSetting = settingsUI.getCurrentSelectedItemIndex();
+                                        rightPageSetting = lastSelectedSettingId;
+                                //next page - animation goes to the left
+                                } else if (bookAnimationTime > targetBookAnimationTime) {
+                                        bookAnimationTime -= delta;
+                                        if (bookAnimationTime < targetBookAnimationTime) {
+                                                bookAnimationTime = targetBookAnimationTime;
+                                        }
+                                        leftPageSetting = lastSelectedSettingId;
+                                        rightPageSetting = settingsUI.getCurrentSelectedItemIndex();
+                                }
+                                if (bookAnimationTime > 400 && bookAnimationTime < 650) {
+                                        //grab page end
+                                        drawSelectedSettingPageUI(screenCX, screenCY, leftPageSetting, b, b2);
+                                        GameRuntime.drawAnimatedImageRes(screenCX, screenCY, 442, ((bookAnimationTime - 400) << 1) / 250);
+                                } else if (bookAnimationTime > 400 || bookAnimationTime <= 0) {
+                                        //idle
+                                        drawSelectedSettingPageUI(screenCX, screenCY, settingsUI.getCurrentSelectedItemIndex(), b, b2);
+                                } else {
+                                        int i12 = ((screenCX - 119) - 239) + 22;
+                                        int i13 = (screenCX + 120) - 30;
+                                        int i14 = (screenCX - 119) + 22;
+                                        int pageSplitXStart = i12 + ((((i13 - 25) - i12) * bookAnimationTime) / 400);
+                                        int pageSplitXEnd = (((i13 - i14) * bookAnimationTime) / 400) + i14;
+                                        int i17 = (screenCY - 158) - 3;
+                                        grp.setClip(0, 0, pageSplitXStart + 3, GameRuntime.currentHeight);
+                                        drawSelectedSettingPageUI(screenCX, screenCY, leftPageSetting, b, b2);
+                                        grp.setClip(pageSplitXEnd - 2, 0, (GameRuntime.currentWidth - pageSplitXEnd) + 2, GameRuntime.currentHeight);
+                                        drawSelectedSettingPageUI(screenCX, screenCY, rightPageSetting, b, b2);
+                                        grp.setClip(0, 0, GameRuntime.currentWidth, GameRuntime.currentHeight);
+                                        GameRuntime.drawImageRes(pageSplitXStart, i17, 377);
+                                        grp.setColor(0xEAE6CC);
+
+                                        int i18 = ((pageSplitXEnd - pageSplitXStart) - 12) - 13;
+                                        grp.fillRect(pageSplitXStart + 12, i17, i18, 295);
+                                        grp.setColor(0);
+                                        grp.fillRect(pageSplitXStart + 12, i17, i18, 1);
+                                        grp.fillRect(pageSplitXStart + 12, ((i17 + 307) - 1) - 12, i18, 1);
+                                        GameRuntime.drawImageRes(i18 + pageSplitXStart + 12, i17, 378);
+                                        GameRuntime.drawImageRes(screenCX, screenCY, 376);
+                                }
+                                drawTranslucentSoftkeyBar(grp);
+                        }
+                        return false;
                 } else if (ui.uiID == GameScene.MENU_PAUSE
 				|| ui.uiID == GameScene.CONFIRM_RESTART_LEVEL
 				|| ui.uiID == GameScene.CONFIRM_RETURN_LEVEL_SELECT
@@ -1355,13 +1484,19 @@ public final class BounceGame {
 				}
 				this.ui.addElement(new UIElement(StringManager.getMessage(MessageID.UI_HIGH_SCORES), -1, this.ui, GameScene.MENU_HIGH_SCORES));
 				this.ui.addElement(new UIElement(StringManager.getMessage(MessageID.UI_GUIDE), -1, this.ui, GameScene.MENU_GUIDE));
-				if (moreGamesStatus) { //since 2.0.25
-					if (MessageID.UI_MORE_GAMES > 0) { //for BounceWin32 manifest
-						this.ui.addElement(new UIElement(StringManager.getMessage(MessageID.UI_MORE_GAMES), -1, this.ui, GameScene.OPEN_MORE_GAMES_URL));
-					}
-				}
+				this.ui.addElement(new UIElement("Settings", -1, this.ui, GameScene.MENU_SETTINGS));
 				this.ui.setSelectedOption(lastMenuOption);
+                                settingsUI = null;
 				break;
+                        case GameScene.MENU_SETTINGS:
+                            System.out.println("SETTINGS");
+                            settingsUI = new SettingsUI(GameRuntime.currentWidth * 8 / 10);
+                            //this.ui.setSoftkey(GameRuntime.SOFTKEY_LEFT, "Info", 0, GameScene.SETTINGS_SHOW_INFO, true);
+                            this.ui.setSoftkey(GameRuntime.SOFTKEY_CENTER, "Toggle", 0, GameScene.SETTINGS_TOGGLE, true);
+                            this.ui.setSoftkey(GameRuntime.SOFTKEY_RIGHT, StringManager.getMessage(MessageID.UI_BACK), 0, GameScene.MENU_TITLE, true);
+                            GameRuntime.loadResource(ResourceID.GRAPHICS_OBJLEVER_RES);
+                            updateSettingToggleSoftkey(this.ui);
+                            break;
 			case GameScene.MENU_LEVEL_SELECT: //level select
 				this.ui.setSoftkey(GameRuntime.SOFTKEY_CENTER, StringManager.getMessage(MessageID.UI_SELECT), 0, GameScene.ENTER_LEVEL, true);
 				this.ui.setSoftkey(GameRuntime.SOFTKEY_RIGHT, StringManager.getMessage(MessageID.UI_BACK), 0, GameScene.MENU_TITLE, true);
@@ -2524,6 +2659,16 @@ public final class BounceGame {
 						cycleLevelSelectRight(ui, true);
 						break;
 				}
+			} else if (ui.uiID == GameScene.MENU_SETTINGS) {
+                                System.out.println("oh no, you pressed a key in the settings menu");
+                                switch (keyCode) {
+					case KeyCode.LEFT:
+						cycleSettingSelectLeft(ui);
+						break;
+					case KeyCode.RIGHT:
+						cycleSettingSelectRight(ui);
+						break;
+				}
                         }
 			ui.handleKeyCode(keyCode);
 		} else if (this.gameMainState == 2) {
@@ -2603,6 +2748,7 @@ public final class BounceGame {
 				GameRuntime.startLoadScene(sceneId);
 				break;
 			}
+                        case GameScene.MENU_SETTINGS:
 			case GameScene.MENU_HIGH_SCORES:
 			case GameScene.MENU_NEW_GAME:
 			case GameScene.CONFIRM_RESTART_LEVEL:
@@ -2671,6 +2817,9 @@ public final class BounceGame {
 				} catch (ConnectionNotFoundException ex) {
 
 				}
+				break;
+                        case GameScene.SETTINGS_TOGGLE:
+                                settingsUI.toggleSelected();
 				break;
 		}
 	}

@@ -916,7 +916,7 @@ public final class GameRuntime extends GameCanvas implements Runnable, IResource
 				}
 			} catch (Throwable th) {
                                 drawErr(graphics, th);
-                                th.printStackTrace();
+				th.printStackTrace();
 			}
 		}
 	}
@@ -931,9 +931,13 @@ public final class GameRuntime extends GameCanvas implements Runnable, IResource
 
 	/* renamed from: b */
 	public static void setBacklight(boolean isOn) {
-                try {
-                        com.nokia.mid.ui.DeviceControl.setLights(0, isOn ? 100 : 0);
-                } catch (NoClassDefFoundError err) {}
+            if (Settings.disableMaxBrightness) {
+                return;
+            }
+
+            try {
+		com.nokia.mid.ui.DeviceControl.setLights(0, isOn ? 100 : 0);
+            } catch (NoClassDefFoundError err) {}
 	}
 
 	/* renamed from: b */
@@ -1335,7 +1339,7 @@ public final class GameRuntime extends GameCanvas implements Runnable, IResource
 			Integer integer = new Integer(resId);
 			if (!resLoadQueue.contains(integer)) {
 				resLoadQueue.addElement(integer);
-			}
+                        }
 			resUnloadQueue.removeElement(integer);
 		}
 	}
